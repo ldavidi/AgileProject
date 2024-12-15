@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ניהול משימות משפחות מילואימניקים</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f5f5f5;
+            color: #333;
+        }
+        header {
+            background-color: #0078d7;
+            color: white;
+            padding: 1rem;
+            text-align: center;
+        }
+        .container {
+            padding: 2rem;
+        }
+        .screen {
+            display: none;
+        }
+        .active {
+            display: block;
+        }
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background-color: #0078d7;
+            display: flex;
+            justify-content: space-around;
+            padding: 0.5rem 0;
+        }
+        .bottom-nav button {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        .bottom-nav button.active {
+            font-weight: bold;
+        }
+        .task-form input,
+        .task-form button {
+            margin: 0.5rem 0;
+            padding: 0.5rem;
+            font-size: 16px;
+        }
+        .calendar {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 5px;
+            text-align: center;
+        }
+        .calendar div {
+            border: 1px solid #ddd;
+            padding: 1rem;
+            background-color: #f9f9f9;
+            border-radius: 4px;
+            position: relative;
+            cursor: pointer;
+        }
+        .calendar .task {
+            padding: 5px;
+            margin: 5px 0;
+            border-radius: 4px;
+            font-size: 12px;
+            color: white;
+        }
+        .details {
+            border-top: 1px solid #ddd;
+            margin-top: 10px;
+            padding-top: 10px;
+        }
+        .month-nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .month-nav button {
+            padding: 5px 10px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>ניהול משימות משפחות מילואימניקים</h1>
+    </header>
+
+    <div id="taskScreen" class="container screen active">
+        <h2>הוספת משימה</h2>
+        <form class="task-form" onsubmit="addTask(event)">
+            <input type="text" id="taskName" placeholder="שם המשימה" required>
+            <input type="date" id="taskDate" required>
+            <input type="time" id="taskTime" required>
+            <input type="color" id="taskColor" value="#0078d7" required>
+            <button type="submit">הוסף משימה</button>
+        </form>
+        <ul id="taskList"></ul>
+    </div>
+
+    <div id="calendarScreen" class="container screen">
+        <h2>לוח שנה</h2>
+        <div class="month-nav">
+            <button onclick="changeMonth(-1)">חודש קודם</button>
+            <span id="monthYear"></span>
+            <button onclick="changeMonth(1)">חודש הבא</button>
+        </div>
+        <div id="calendar" class="calendar"></div>
+        <div id="details" class="details"></div>
+    </div>
+
+    <div class="bottom-nav">
+        <button id="taskBtn" class="active" onclick="showScreen('taskScreen')">משימות</button>
+        <button id="calendarBtn" onclick="showScreen('calendarScreen')">לוח שנה</button>
+    </div>
+
+    <script>
+        const tasks = [];
+        let currentMonth = new Date().getMonth();
+        let currentYear = new Date().getFullYear();
+
+        function showScreen(screenId) {
+            const screens = document.querySelectorAll('.screen');
+            screens.forEach(screen => screen.classList.remove('active'));
+            document.getElementById(screenId).classList.add('active');
+
+            const buttons = document.querySelectorAll('.bottom-nav button');
+            buttons.forEach(button => button.classList.remove('active'));
+            document.getElementById(screenId.replace('Screen', 'Btn')).classList.add('active');
+
+            if (screenId === 'calendarScreen') {
+                renderCalendar();
+            }
+        }
+
+        function addTask(event) {
+            event.preventDefault();
+            const name = document.getElementById('taskName').value;
+            const date = document.getElementById('taskDate').value;
+            const time = document.getElementById('taskTime').value;
+            const color = document.getElementById('taskColor').value;
+
+            tasks.push({ name, date, time, color, completed: false });
+
+            document.getElementById('taskName').value = '';
+            document.getElementById('taskDate').value = '';
+            document.getElementById('taskTime').value = '';
+            document.getElementById('taskColor').value = '#0078d7';
+
+            renderTaskList();
+            renderCalendar();
+        }
+
+        function renderTaskList() {
+            const taskList = document.getElementById('taskList');
+            taskList.innerHTML = '';
+
+            tasks.forEach((task, index) => {
+                const li = document.createElement('li');
+                li.innerHTML = `${task.name} - ${task.date} ${task.time} 
+                                <button onclick="toggleTaskCompletion(${index})">
+                                    ${task.completed ? 'בטל סימון' : 'סמן כבוצע'}
+                                </button>
+                                <button onclick="deleteTask(${index})">מחק</button>`;
+                taskList.appendChild(li);
+            });
+        }
+
+        function toggleTaskCompletion(index) {
+            tasks[index].completed = !tasks[index].completed;
+            renderTaskList();
+            renderCalendar();
+        }
+
+        function deleteTask(index) {
+            tasks.splice(index, 1);
+            renderTaskList();
+            renderCalendar();
+        }
+
+        function changeMonth(direction) {
+            currentMonth += direction;
+            if (currentMonth < 0) {
+                currentMonth = 11;
+                currentYear--;
+            } else if (currentMonth > 11) {
+                currentMonth = 0;
+                currentYear++;
+            }
+            renderCalendar();
+        }
+
+        function renderCalendar() {
+            const calendar = document.getElementById('calendar');
+            const monthYear = document.getElementById('monthYear');
+            calendar.innerHTML = '';
+            const date = new Date(currentYear, currentMonth);
+            monthYear.textContent = date.toLocaleDateString('he-IL', { month: 'long', year: 'numeric' });
+
+            const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+            for (let i = 1; i <= daysInMonth; i++) {
+                const dayDiv = document.createElement('div');
+                dayDiv.innerHTML = `<strong>${i}</strong>`;
+                const dateStr = new Date(currentYear, currentMonth, i).toISOString().split('T')[0];
+
+                tasks.forEach(task => {
+                    if (task.date === dateStr) {
+                        const taskDiv = document.createElement('div');
+                        taskDiv.className = 'task';
+                        taskDiv.style.backgroundColor = task.color;
+                        taskDiv.textContent = `${task.name}`;
+                        if (task.completed) {
+                            taskDiv.style.textDecoration = 'line-through';
+                        }
+                        dayDiv.appendChild(taskDiv);
+                    }
+                });
+
+                dayDiv.onclick = () => showDetails(dateStr);
+                calendar.appendChild(dayDiv);
+            }
+        }
+
+        function showDetails(date) {
+            const details = document.getElementById('details');
+            details.innerHTML = `<h3>משימות לתאריך ${date}:</h3>`;
+            const tasksForDate = tasks.filter(task => task.date === date);
+
+            if (tasksForDate.length > 0) {
+                tasksForDate.forEach(task => {
+                    details.innerHTML += `<p>${task.name} - ${task.time} 
+                                          ${task.completed ? '(בוצע)' : '(לא בוצע)'}</p>`;
+                });
+            } else {
+                details.innerHTML += `<p>אין משימות לתאריך זה.</p>`;
+            }
+        }
+
+        renderCalendar();
+    </script>
+</body>
+</html>
