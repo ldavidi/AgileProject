@@ -1,3 +1,5 @@
+הקוד המלא לגיבוי  :
+
 <!DOCTYPE html>
 <html lang="he" dir="rtl">
 <head>
@@ -9,11 +11,11 @@
             font-family: Arial, sans-serif;
             margin: 0;
             padding: 0;
-            background-color: #fff;
-            color: #000;
+            background-color: #f5f5f5;
+            color: #333;
         }
         header {
-            background-color: #444;
+            background-color: #0078d7;
             color: white;
             padding: 1rem;
             text-align: center;
@@ -32,7 +34,7 @@
             bottom: 0;
             left: 0;
             width: 100%;
-            background-color: #444;
+            background-color: #0078d7;
             display: flex;
             justify-content: space-around;
             padding: 0.5rem 0;
@@ -52,16 +54,6 @@
             margin: 0.5rem 0;
             padding: 0.5rem;
             font-size: 16px;
-            background-color: #ddd;
-            color: black;
-            border: none;
-        }
-        .task-form button {
-            background-color: #bbb;
-            cursor: pointer;
-        }
-        .task-form button:hover {
-            background-color: #999;
         }
         .calendar {
             display: grid;
@@ -70,9 +62,9 @@
             text-align: center;
         }
         .calendar div {
-            border: 1px solid #555;
+            border: 1px solid #ddd;
             padding: 1rem;
-            background-color: #eee;
+            background-color: #f9f9f9;
             border-radius: 4px;
             position: relative;
             cursor: pointer;
@@ -82,10 +74,10 @@
             margin: 5px 0;
             border-radius: 4px;
             font-size: 12px;
-            color: black;
+            color: white;
         }
         .details {
-            border-top: 1px solid #555;
+            border-top: 1px solid #ddd;
             margin-top: 10px;
             padding-top: 10px;
         }
@@ -99,12 +91,6 @@
             padding: 5px 10px;
             font-size: 16px;
             cursor: pointer;
-            background-color: #ddd;
-            color: black;
-            border: none;
-        }
-        .month-nav button:hover {
-            background-color: #bbb;
         }
     </style>
 </head>
@@ -117,10 +103,10 @@
         <h2>הוספת משימה</h2>
         <form class="task-form" onsubmit="addTask(event)">
             <input type="text" id="taskName" placeholder="שם המשימה" required>
+            <input type="text" id="taskExecutor" placeholder="מבצע המשימה" required>
             <input type="date" id="taskDate" required>
             <input type="time" id="taskTime" required>
             <input type="color" id="taskColor" value="#0078d7" required>
-            <input type="file" id="taskAttachment" style="margin-left: 10px;">
             <button type="submit">הוסף משימה</button>
         </form>
         <ul id="taskList"></ul>
@@ -143,7 +129,7 @@
     </div>
 
     <script>
-        const tasks = [];
+        let tasks = [];
         let currentMonth = new Date().getMonth();
         let currentYear = new Date().getFullYear();
 
@@ -162,60 +148,64 @@
         }
 
         function addTask(event) {
-            event.preventDefault();
+            event.preventDefault(); 
+
             const name = document.getElementById('taskName').value;
+            const executor = document.getElementById('taskExecutor').value;
             const date = document.getElementById('taskDate').value;
             const time = document.getElementById('taskTime').value;
             const color = document.getElementById('taskColor').value;
-            const attachment = document.getElementById('taskAttachment').files[0];
 
-            const task = {
-                name,
-                date,
-                time,
-                color,
-                attachment: attachment ? URL.createObjectURL(attachment) : null,
-                completed: false
-            };
-
-            tasks.push(task);
+            tasks.push({ name, executor, date, time, color, completed: false });
 
             document.getElementById('taskName').value = '';
+            document.getElementById('taskExecutor').value = '';
             document.getElementById('taskDate').value = '';
             document.getElementById('taskTime').value = '';
             document.getElementById('taskColor').value = '#0078d7';
-            document.getElementById('taskAttachment').value = '';
 
             renderTaskList();
             renderCalendar();
         }
 
         function renderTaskList() {
-            const taskList = document.getElementById('taskList');
-            taskList.innerHTML = '';
+            const taskList = document.getElementById("taskList");
+            taskList.innerHTML = ""; 
 
             tasks.forEach((task, index) => {
-                const li = document.createElement('li');
-                li.innerHTML = `${task.name} - ${task.date} ${task.time} 
-                                <button onclick="toggleTaskCompletion(${index})">
-                                    ${task.completed ? 'בטל סימון' : 'סמן כבוצע'}
-                                </button>
-                                <button onclick="deleteTask(${index})">מחק</button>`;
-                if (task.attachment) {
-                    const attachmentLink = document.createElement('a');
-                    attachmentLink.href = task.attachment;
-                    attachmentLink.target = '_blank';
-                    attachmentLink.innerText = 'View Attachment';
-                    li.appendChild(attachmentLink);
-                }
+                const li = document.createElement("li");
+                li.innerHTML = `
+                    <div>
+                        <input type="text" id="editName${index}" value="${task.name}" />
+                        <input type="text" id="editExecutor${index}" value="${task.executor}" />
+                        <input type="date" id="editDate${index}" value="${task.date}" />
+                        <input type="time" id="editTime${index}" value="${task.time}" />
+                        <button onclick="saveTask(${index})">שמור</button>
+                        <button onclick="deleteTask(${index})">מחק</button>
+                    </div>
+                `;
                 taskList.appendChild(li);
             });
         }
 
-        function toggleTaskCompletion(index) {
-            tasks[index].completed = !tasks[index].completed;
-            renderTaskList();
-            renderCalendar();
+        function saveTask(index) {
+            const newName = document.getElementById(editName${index}).value;
+            const newExecutor = document.getElementById(editExecutor${index}).value;
+            const newDate = document.getElementById(editDate${index}).value;
+            const newTime = document.getElementById(editTime${index}).value;
+
+            // עדכון המשימה במערך
+            tasks[index] = { 
+                name: newName, 
+                executor: newExecutor, 
+                date: newDate, 
+                time: newTime,
+                color: tasks[index].color, 
+                completed: tasks[index].completed
+            };
+
+            renderTaskList(); 
+            renderCalendar(); 
         }
 
         function deleteTask(index) {
@@ -236,40 +226,41 @@
             renderCalendar();
         }
 
-        function renderCalendar() {
-            const calendar = document.getElementById('calendar');
-            const monthYear = document.getElementById('monthYear');
-            calendar.innerHTML = '';
-            const date = new Date(currentYear, currentMonth);
-            monthYear.textContent = date.toLocaleDateString('he-IL', { month: 'long', year: 'numeric' });
+    function renderCalendar() {
+    const calendar = document.getElementById('calendar');
+    const monthYear = document.getElementById('monthYear');
+    calendar.innerHTML = '';
+    const date = new Date(currentYear, currentMonth);
+    monthYear.textContent = date.toLocaleDateString('he-IL', { month: 'long', year: 'numeric' });
 
-            const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
-            for (let i = 1; i <= daysInMonth; i++) {
-                const dayDiv = document.createElement('div');
-                dayDiv.innerHTML = `<strong>${i}</strong>`;
-                const dateStr = new Date(currentYear, currentMonth, i).toISOString().split('T')[0];
+    const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+    for (let i = 1; i <= daysInMonth; i++) {
+        const dayDiv = document.createElement('div');
+        dayDiv.innerHTML = <strong>${i}</strong>;
+        const dateStr = new Date(currentYear, currentMonth, i).toISOString().split('T')[0];
 
-                tasks.forEach(task => {
-                    if (task.date === dateStr) {
-                        const taskDiv = document.createElement('div');
-                        taskDiv.className = 'task';
-                        taskDiv.style.backgroundColor = task.color;
-                        taskDiv.textContent = `${task.name}`;
-                        if (task.completed) {
-                            taskDiv.style.textDecoration = 'line-through';
-                        }
-                        dayDiv.appendChild(taskDiv);
-                    }
-                });
-
-                dayDiv.onclick = () => showDetails(dateStr);
-                calendar.appendChild(dayDiv);
+        tasks.forEach(task => {
+            if (task.date === dateStr) {
+                const taskDiv = document.createElement('div');
+                taskDiv.className = 'task';
+                taskDiv.style.backgroundColor = task.color;
+                taskDiv.textContent = ${task.name} - ${task.executor}; // הצגת שם המבצע
+                if (task.completed) {
+                    taskDiv.style.textDecoration = 'line-through';
+                }
+                dayDiv.appendChild(taskDiv);
             }
-        }
+        });
+
+        dayDiv.onclick = () => showDetails(dateStr);
+        calendar.appendChild(dayDiv);
+    }
+}
+
 
         function showDetails(date) {
             const details = document.getElementById('details');
-            details.innerHTML = `<h3>משימות לתאריך ${date}:</h3>`;
+            details.innerHTML = <h3>משימות לתאריך ${date}:</h3>;
             const tasksForDate = tasks.filter(task => task.date === date);
 
             if (tasksForDate.length > 0) {
@@ -278,7 +269,7 @@
                                           ${task.completed ? '(בוצע)' : '(לא בוצע)'}</p>`;
                 });
             } else {
-                details.innerHTML += `<p>אין משימות לתאריך זה.</p>`;
+                details.innerHTML += <p>אין משימות לתאריך זה.</p>;
             }
         }
 
