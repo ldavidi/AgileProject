@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="he" dir="rtl">
 <head>
@@ -107,12 +106,37 @@
         .month-nav button:hover {
             background-color: #bbb;
         }
+        /* עיצוב רקע התמונה */
+        .background-image {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-size: cover;
+            background-position: center;
+            z-index: -1; /* תמונה ברקע לא תסתיר את התוכן */
+        }
+
+        /* הוספת עיצוב עבור כפתור "בחירת רקע" */
+        .background-selector {
+            text-align: right;
+            margin: 20px 0;
+        }
     </style>
 </head>
 <body>
     <header>
         <h1>ניהול משימות משפחות מילואימניקים</h1>
     </header>
+
+    <!-- הוספת כפתור להעלאת תמונה בצד ימין למעלה -->
+    <div class="container">
+        <div class="background-selector">
+            <label for="backgroundImageInput">בחירת רקע למסך</label>
+            <input type="file" id="backgroundImageInput" accept="image/*" onchange="changeBackgroundImage(event)">
+        </div>
+    </div>
 
     <div id="taskScreen" class="container screen active">
         <h2>הוספת משימה</h2>
@@ -148,6 +172,52 @@
         const tasks = [];
         let currentMonth = new Date().getMonth();
         let currentYear = new Date().getFullYear();
+        let editIndex = -1;  // משתנה כדי לשמור את אינדקס המשימה לעריכה
+
+        // פונקציה לשינוי רקע הדף
+        function changeBackgroundImage(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const backgroundDiv = document.createElement('div');
+                    backgroundDiv.classList.add('background-image');
+                    backgroundDiv.style.backgroundImage = `url(${e.target.result})`;
+                    document.body.appendChild(backgroundDiv);
+                    updateTextColorBasedOnImage(e.target.result);
+                }
+                reader.readAsDataURL(file);
+            }
+        }
+
+        function updateTextColorBasedOnImage(imageSrc) {
+            const img = new Image();
+            img.onload = function() {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                canvas.width = img.width;
+                canvas.height = img.height;
+                ctx.drawImage(img, 0, 0);
+
+                const imageData = ctx.getImageData(0, 0, img.width, img.height);
+                let r = 0, g = 0, b = 0;
+
+                // חישוב ממוצע הצבעים בתמונה
+                for (let i = 0; i < imageData.data.length; i += 4) {
+                    r += imageData.data[i];
+                    g += imageData.data[i + 1];
+                    b += imageData.data[i + 2];
+                }
+
+                r = r / (imageData.data.length / 4);
+                g = g / (imageData.data.length / 4);
+                b = b / (imageData.data.length / 4);
+
+                const brightness = (r * 0.299 + g * 0.587 + b * 0.114);
+                document.body.style.color = brightness < 128 ? 'white' : 'black';
+            };
+            img.src = imageSrc;
+        }
 
         function showScreen(screenId) {
             const screens = document.querySelectorAll('.screen');
@@ -182,17 +252,15 @@
                 completed: false
             };
 
-            tasks.push(task);
-
-            document.getElementById('taskName').value = '';
-            document.getElementById('taskExecutor').value = '';
-            document.getElementById('taskDate').value = '';
-            document.getElementById('taskTime').value = '';
-            document.getElementById('taskColor').value = '#0078d7';
-            document.getElementById('taskAttachment').value = '';
-
+            if (editIndex === -1) {
+                tasks.push(task);
+            } else {
+                tasks[editIndex] = task;
+                editIndex = -1;
+            }
             renderTaskList();
             renderCalendar();
+            document.querySelector('.task-form').reset();
         }
 
         function renderTaskList() {
@@ -200,28 +268,22 @@
             taskList.innerHTML = '';
 
             tasks.forEach((task, index) => {
-                const li = document.createElement('li');
-                li.innerHTML = `${task.name} - ${task.executor} - ${task.date} ${task.time} 
-                                <button onclick="toggleTaskCompletion(${index})">
-                                    ${task.completed ? 'בטל סימון' : 'סמן כבוצע'}
-                                </button>
-                                <button onclick="deleteTask(${index})">מחק</button>
-                                <button onclick="editTask(${index})">ערוך</button>`;
-                if (task.attachment) {
-                    const attachmentLink = document.createElement('a');
-                    attachmentLink.href = task.attachment;
-                    attachmentLink.target = '_blank';
-                    attachmentLink.innerText = 'View Attachment';
-                    li.appendChild(attachmentLink);
-                }
-                taskList.appendChild(li);
-            });
-        }
+                const taskItem = document.createElement('li');
+                taskItem.textContent = `${task.name} - ${task.executor} - ${task.date} ${task.time}`;
+                if (task.completed) taskItem.style.textDecoration = 'line-through';
 
-        function toggleTaskCompletion(index) {
-            tasks[index].completed = !tasks[index].completed;
-            renderTaskList();
-            renderCalendar();
+                const deleteBtn = document.createElement('button');
+                deleteBtn.textContent = 'מחק';
+                deleteBtn.onclick = () => deleteTask(index);
+                taskItem.appendChild(deleteBtn);
+
+                const editBtn = document.createElement('button');
+                editBtn.textContent = 'ערוך';
+                editBtn.onclick = () => editTask(index);
+                taskItem.appendChild(editBtn);
+
+                taskList.appendChild(taskItem);
+            });
         }
 
         function deleteTask(index) {
@@ -231,53 +293,48 @@
         }
 
         function editTask(index) {
+            editIndex = index;
             const task = tasks[index];
             document.getElementById('taskName').value = task.name;
             document.getElementById('taskExecutor').value = task.executor;
             document.getElementById('taskDate').value = task.date;
             document.getElementById('taskTime').value = task.time;
             document.getElementById('taskColor').value = task.color;
-            document.getElementById('taskAttachment').value = '';
-
-            document.getElementById('taskFormSubmit').onclick = function(event) {
-                event.preventDefault();
-                updateTask(index);
-            };
         }
 
-        function updateTask(index) {
-            const name = document.getElementById('taskName').value;
-            const executor = document.getElementById('taskExecutor').value;
-            const date = document.getElementById('taskDate').value;
-            const time = document.getElementById('taskTime').value;
-            const color = document.getElementById('taskColor').value;
-            const attachment = document.getElementById('taskAttachment').files[0];
+        function renderCalendar() {
+            const calendar = document.getElementById('calendar');
+            calendar.innerHTML = '';
 
-            tasks[index] = {
-                name,
-                executor,
-                date,
-                time,
-                color,
-                attachment: attachment ? URL.createObjectURL(attachment) : tasks[index].attachment,
-                completed: tasks[index].completed
-            };
+            const monthYear = document.getElementById('monthYear');
+            monthYear.textContent = `${currentMonth + 1}/${currentYear}`;
 
-            document.getElementById('taskName').value = '';
-            document.getElementById('taskExecutor').value = '';
-            document.getElementById('taskDate').value = '';
-            document.getElementById('taskTime').value = '';
-            document.getElementById('taskColor').value = '#0078d7';
-            document.getElementById('taskAttachment').value = '';
+            const firstDay = new Date(currentYear, currentMonth, 1);
+            const lastDay = new Date(currentYear, currentMonth + 1, 0);
+            const daysInMonth = lastDay.getDate();
 
-            document.getElementById('taskFormSubmit').onclick = addTask;
+            for (let i = 1; i <= daysInMonth; i++) {
+                const day = new Date(currentYear, currentMonth, i);
+                const dayElement = document.createElement('div');
+                dayElement.textContent = i;
+                dayElement.style.color = 'black';  // התאריכים יהיו תמיד בצבע שחור
 
-            renderTaskList();
-            renderCalendar();
+                // הוספת המשימות עבור כל יום בלוח השנה
+                const taskForDay = tasks.filter(task => task.date === day.toISOString().split('T')[0]);
+                taskForDay.forEach(task => {
+                    const taskElement = document.createElement('div');
+                    taskElement.classList.add('task');
+                    taskElement.textContent = task.name;
+                    taskElement.style.backgroundColor = task.color;
+                    dayElement.appendChild(taskElement);
+                });
+
+                calendar.appendChild(dayElement);
+            }
         }
 
-        function changeMonth(direction) {
-            currentMonth += direction;
+        function changeMonth(offset) {
+            currentMonth += offset;
             if (currentMonth < 0) {
                 currentMonth = 11;
                 currentYear--;
@@ -287,54 +344,6 @@
             }
             renderCalendar();
         }
-
-        function renderCalendar() {
-            const calendar = document.getElementById('calendar');
-            const monthYear = document.getElementById('monthYear');
-            calendar.innerHTML = '';
-            const date = new Date(currentYear, currentMonth);
-            monthYear.textContent = date.toLocaleDateString('he-IL', { month: 'long', year: 'numeric' });
-
-            const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
-            for (let i = 1; i <= daysInMonth; i++) {
-                const dayDiv = document.createElement('div');
-                dayDiv.innerHTML = `<strong>${i}</strong>`;
-                const dateStr = new Date(currentYear, currentMonth, i).toISOString().split('T')[0];
-
-                tasks.forEach(task => {
-                    if (task.date === dateStr) {
-                        const taskDiv = document.createElement('div');
-                        taskDiv.className = 'task';
-                        taskDiv.style.backgroundColor = task.color;
-                        taskDiv.textContent = `${task.name} - ${task.executor}`;
-                        if (task.completed) {
-                            taskDiv.style.textDecoration = 'line-through';
-                        }
-                        dayDiv.appendChild(taskDiv);
-                    }
-                });
-
-                dayDiv.onclick = () => showDetails(dateStr);
-                calendar.appendChild(dayDiv);
-            }
-        }
-
-        function showDetails(date) {
-            const details = document.getElementById('details');
-            details.innerHTML = `<h3>משימות לתאריך ${date}:</h3>`;
-            const tasksForDate = tasks.filter(task => task.date === date);
-
-            if (tasksForDate.length > 0) {
-                tasksForDate.forEach(task => {
-                    details.innerHTML += `<p>${task.name} - ${task.executor} - ${task.time} 
-                                          ${task.completed ? '(בוצע)' : '(לא בוצע)'}</p>`;
-                });
-            } else {
-                details.innerHTML += `<p>אין משימות לתאריך זה.</p>`;
-            }
-        }
-
-        renderCalendar();
     </script>
 </body>
 </html>
