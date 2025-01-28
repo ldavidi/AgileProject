@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>פורטל לניהול משימות משפחות מילואימניקים</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dayjs/1.11.7/dayjs.min.js"></script>
+    <style>
+        body {
+            font-family: '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f9f9f9;
+            color: #333;
+        }
+        header {
+            background-color: #f5f5f7;
+            color: #000;
+            padding: 1rem;
+            text-align: center;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+        .container {
+            padding: 2rem;
+            margin: 0 auto;
+            max-width: 800px;
+            background-color: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        .screen {
+            display: none;
+        }
+        .active {
+            display: block;
+        }
+        .button {
+            padding: 0.75rem 1.5rem;
+            margin: 0.5rem;
+            border: none;
+            border-radius: 12px;
+            background-color: #0071e3;
+            color: white;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        .button:hover {
+            background-color: #005bb5;
+        }
+        .calendar {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 10px;
+            text-align: center;
+            background-color: #f9f9f9;
+        }
+        .calendar div {
+            border: 1px solid #e0e0e0;
+            padding: 1rem;
+            border-radius: 8px;
+            background-color: white;
+            transition: all 0.2s;
+            position: relative;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+        .calendar div .task {
+            font-size: 0.9rem;
+            margin-top: 5px;
+            padding: 3px 8px;
+            border-radius: 8px;
+            color: white;
+        }
+        .calendar div:hover {
+            background-color: #f1f1f1;
+        }
+        .error-message {
+            color: red;
+            margin-top: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <div id="appContent">
+        <header>
+            <h1 class="text-3xl font-bold">ניהול משימות משפחות מילואימניקים</h1>
+            <div class="flex justify-center mt-4">
+                <button id="taskBtn" class="button" onclick="showScreen('taskScreen')">רשימת משימות</button>
+                <button id="calendarBtn" class="button" onclick="showScreen('calendarScreen')">ניהול לוח שנה</button>
+            </div>
+        </header>
+
+        <div id="taskScreen" class="container screen active">
+            <h2 class="text-2xl font-semibold mb-4">הוספת משימה</h2>
+            <form class="task-form space-y-4" onsubmit="addTask(event)">
+                <input type="text" id="taskName" placeholder="שם המשימה" required class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <input type="text" id="taskExecutor" placeholder="מבצע המשימה" required class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <input type="date" id="taskDate" required class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" pattern="\\d{4}-\\d{2}-\\d{2}">
+                <input type="time" id="taskTime" required class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <input type="color" id="taskColor" value="#0078d7" required class="w-full px-3 py-2">
+                <button type="submit" class="button">הוסף משימה</button>
+            </form>
+            <div id="errorMessage" class="error-message"></div>
+            <ul id="taskList" class="mt-4"></ul>
+        </div>
+
+        <div id="calendarScreen" class="container screen">
+            <h2 class="text-2xl font-semibold mb-4">לוח שנה</h2>
+            <div class="month-nav flex justify-between items-center mb-4">
+                <button onclick="changeMonth(-1)" class="button">חודש קודם</button>
+                <span id="monthYear" class="text-lg font-semibold"></span>
+                <button onclick="changeMonth(1)" class="button">חודש הבא</button>
+            </div>
+            <div id="calendar" class="calendar grid grid-cols-7 gap-2"></div>
+        </div>
+    </div>
+
+    <script>
+        const tasks = [];
+        let currentMonth = new Date().getMonth();
+        let currentYear = new Date().getFullYear();
+        let editIndex = -1;
+
+        function showScreen(screenId) {
+            const screens = document.querySelectorAll('.screen');
+            screens.forEach(screen => screen.classList.remove('active'));
+            document.getElementById(screenId).classList.add('active');
+            if (screenId === 'calendarScreen') renderCalendar();
+        }
+
+        async function fetchTasks() {
+            try {
+                console.log("Fetching tasks from the server...");
+                const response = await fetch('http://localhost:3000/tasks');
+                if (!response.ok) {
+                    throw new Error(`Failed to fetch tasks: ${response.statusText}`);
+                }
+                const data = await response.json();
+                console.log("Tasks fetched:", data);
+                tasks.length = 0;
+                tasks.push(...data);
+                renderTaskList();
+                renderCalendar();
+            } catch (error) {
+                console.error('Error fetching tasks:', error);
+                alert('Failed to load tasks. Please check the server connection.');
+            }
+        }
+
+        async function addTask(event) {
+            event.preventDefault();
+            const name = document.getElementById('taskName').value;
+            const executor = document.getElementById('taskExecutor').value;
+            const date = document.getElementById('taskDate').value;
+            const time = document.getElementById('taskTime').value;
+            const color = document.getElementById('taskColor').value;
+
+            const errorMessage = document.getElementById('errorMessage');
+            errorMessage.textContent = '';
+
+            console.log(`Adding task: Name=${name}, Executor=${executor}, Date=${date}, Time=${time}, Color=${color}`);
+
+            if (!name || !executor || !date || !time || !color) {
+                errorMessage.textContent = 'All fields are required.';
+                return;
+            }
+
+            const task = {
+                name,
+                executor,
+                date,
+                time,
+                color,
+                completed: false
+            };
+
+            try {
+                let response;
+                if (editIndex === -1) {
+                    response = await fetch('http://localhost:3000/tasks', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(task)
+                    });
+                } else {
+                    response = await fetch(`http://localhost:3000/tasks/${tasks[editIndex].id}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(task)
+                    });
+                    editIndex = -1;
+                }
+
+                if (!response.ok) {
+                    throw new Error('Failed to save task');
+                }
+
+                const result = await response.json();
+                task.id = result.id;
+                tasks.push(task);
+                renderTaskList();
+                renderCalendar();
+                document.querySelector('.task-form').reset();
+            } catch (error) {
+                errorMessage.textContent = `Error: ${error.message}`;
+                console.error('Error:', error);
+            }
+        }
+
+        async function deleteTask(index) {
+            try {
+                const response = await fetch(`http://localhost:3000/tasks/${tasks[index].id}`, { method: 'DELETE' });
+                if (!response.ok) {
+                    throw new Error('Failed to delete task');
+                }
+                tasks.splice(index, 1);
+                renderTaskList();
+                renderCalendar();
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        }
+
+        async function editTask(index) {
+            editIndex = index;
+            const task = tasks[index];
+            document.getElementById('taskName').value = task.name;
+            document.getElementById('taskExecutor').value = task.executor;
+            document.getElementById('taskDate').value = task.date;
+            document.getElementById('taskTime').value = task.time;
+            document.getElementById('taskColor').value = task.color;
+        }
+
+        function renderTaskList() {
+            const taskList = document.getElementById('taskList');
+            taskList.innerHTML = '';
+
+            tasks.forEach((task, index) => {
+                const taskItem = document.createElement('li');
+                
+                // Ensure the date is correctly parsed and formatted using dayjs
+                const formattedDate = dayjs(task.date).isValid() ? dayjs(task.date).format('YYYY-MM-DD') : 'Invalid Date';
+                const formattedTime = task.time || '';
+
+                console.log(`Task: ${task.name}, Executor: ${task.executor}, Date: ${formattedDate}, Time: ${formattedTime}, Color: ${task.color}`); // Debugging statement
+
+                taskItem.textContent = `${task.name} - ${task.executor} - ${formattedDate} - ${formattedTime} - `;
+                if (task.completed) taskItem.style.textDecoration = 'line-through';
+
+                const deleteBtn = document.createElement('button');
+                deleteBtn.textContent = ' מחק | ';
+                deleteBtn.onclick = () => deleteTask(index);
+                taskItem.appendChild(deleteBtn);
+
+                const editBtn = document.createElement('button');
+                editBtn.textContent = ' ערוך ';
+                editBtn.onclick = () => editTask(index);
+                taskItem.appendChild(editBtn);
+
+                taskList.appendChild(taskItem);
+            });
+        }
+
+        function renderCalendar() {
+            const calendar = document.getElementById('calendar');
+            calendar.innerHTML = '';
+
+            const monthYear = document.getElementById('monthYear');
+            monthYear.textContent = `${currentMonth + 1}/${currentYear}`;
+
+            const firstDay = new Date(currentYear, currentMonth, 1);
+            const lastDay = new Date(currentYear, currentMonth + 1, 0);
+
+            for (let day = 1; day <= lastDay.getDate(); day++) {
+                const dayElement = document.createElement('div');
+                dayElement.textContent = day;
+
+                const currentDate = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                const tasksForDay = tasks.filter(task => dayjs(task.date).format('YYYY-MM-DD') === currentDate);
+
+                tasksForDay.forEach(task => {
+                    const taskElement = document.createElement('div');
+                    taskElement.className = 'task';
+                    taskElement.textContent = task.name;
+                    taskElement.style.backgroundColor = task.color;
+                    dayElement.appendChild(taskElement);
+                });
+
+                calendar.appendChild(dayElement);
+            }
+        }
+
+        function changeMonth(offset) {
+            currentMonth += offset;
+            if (currentMonth < 0) {
+                currentMonth = 11;
+                currentYear--;
+            } else if (currentMonth > 11) {
+                currentMonth = 0;
+                currentYear++;
+            }
+            renderCalendar();
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            fetchTasks();
+        });
+    </script>
+</body>
+</html>
