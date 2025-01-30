@@ -147,6 +147,7 @@
                 alert('Failed to load tasks. Please check the server connection.');
             }
         }
+        
 
         async function addTask(event) {
             event.preventDefault();
@@ -231,65 +232,83 @@
             document.getElementById('taskTime').value = task.time;
             document.getElementById('taskColor').value = task.color;
         }
-
-        function renderTaskList() {
-            const taskList = document.getElementById('taskList');
-            taskList.innerHTML = '';
-
-            tasks.forEach((task, index) => {
-                const taskItem = document.createElement('li');
-                
-                // Ensure the date is correctly parsed and formatted using dayjs
-                const formattedDate = dayjs(task.date).isValid() ? dayjs(task.date).format('YYYY-MM-DD') : 'Invalid Date';
-                const formattedTime = task.time || '';
-
-                console.log(`Task: ${task.name}, Executor: ${task.executor}, Date: ${formattedDate}, Time: ${formattedTime}, Color: ${task.color}`); // Debugging statement
-
-                taskItem.textContent = `${task.name} - ${task.executor} - ${formattedDate} - ${formattedTime} - `;
-                if (task.completed) taskItem.style.textDecoration = 'line-through';
-
-                const deleteBtn = document.createElement('button');
-                deleteBtn.textContent = ' מחק | ';
-                deleteBtn.onclick = () => deleteTask(index);
-                taskItem.appendChild(deleteBtn);
-
-                const editBtn = document.createElement('button');
-                editBtn.textContent = ' ערוך ';
-                editBtn.onclick = () => editTask(index);
-                taskItem.appendChild(editBtn);
-
-                taskList.appendChild(taskItem);
-            });
+        async function markAsCompleted(index) {
+    const task = tasks[index];
+    task.completed = true;
+    try {
+        const response = await fetch('http://localhost:3000/tasks/' + task.id, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(task)
+        });
+        if (!response.ok) {
+            throw new Error('Failed to update task');
         }
+        renderTaskList();
+        renderCalendar();
+    } catch (error) {
+        console.error('Error:', error);
+    }
+}
 
-        function renderCalendar() {
-            const calendar = document.getElementById('calendar');
-            calendar.innerHTML = '';
+function renderTaskList() {
+    const taskList = document.getElementById('taskList');
+    taskList.innerHTML = '';
 
-            const monthYear = document.getElementById('monthYear');
-            monthYear.textContent = `${currentMonth + 1}/${currentYear}`;
+    tasks.forEach((task, index) => {
+        const taskItem = document.createElement('li');
+        const formattedDate = dayjs(task.date).isValid() ? dayjs(task.date).format('YYYY-MM-DD') : 'Invalid Date';
+        const formattedTime = task.time || '';
+        taskItem.textContent = `${task.name} - ${task.executor} - ${formattedDate} - ${formattedTime} - `;
+        if (task.completed) taskItem.style.textDecoration = 'line-through';
 
-            const firstDay = new Date(currentYear, currentMonth, 1);
-            const lastDay = new Date(currentYear, currentMonth + 1, 0);
+        const deleteBtn = document.createElement('button');
+        deleteBtn.textContent = ' מחק ';
+        deleteBtn.onclick = () => deleteTask(index);
+        taskItem.appendChild(deleteBtn);
 
-            for (let day = 1; day <= lastDay.getDate(); day++) {
-                const dayElement = document.createElement('div');
-                dayElement.textContent = day;
+        const editBtn = document.createElement('button');
+        editBtn.textContent = '| ערוך ';
+        editBtn.onclick = () => editTask(index);
+        taskItem.appendChild(editBtn);
 
-                const currentDate = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-                const tasksForDay = tasks.filter(task => dayjs(task.date).format('YYYY-MM-DD') === currentDate);
+        const completeBtn = document.createElement('button');
+        completeBtn.textContent = '| בוצע ';
+        completeBtn.onclick = () => markAsCompleted(index);
+        taskItem.appendChild(completeBtn);
 
-                tasksForDay.forEach(task => {
-                    const taskElement = document.createElement('div');
-                    taskElement.className = 'task';
-                    taskElement.textContent = task.name;
-                    taskElement.style.backgroundColor = task.color;
-                    dayElement.appendChild(taskElement);
-                });
+        taskList.appendChild(taskItem);
+    });
+}
 
-                calendar.appendChild(dayElement);
+function renderCalendar() {
+    const calendar = document.getElementById('calendar');
+    calendar.innerHTML = '';
+    const monthYear = document.getElementById('monthYear');
+    monthYear.textContent = (currentMonth + 1) + '/' + currentYear;
+    const firstDay = new Date(currentYear, currentMonth, 1);
+    const lastDay = new Date(currentYear, currentMonth + 1, 0);
+
+    for (let day = 1; day <= lastDay.getDate(); day++) {
+        const dayElement = document.createElement('div');
+        dayElement.textContent = day;
+        const currentDate = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        const tasksForDay = tasks.filter(task => dayjs(task.date).format('YYYY-MM-DD') === currentDate);
+
+        tasksForDay.forEach(task => {
+            const taskElement = document.createElement('div');
+            taskElement.className = 'task';
+            taskElement.textContent = task.name;
+            taskElement.style.backgroundColor = task.color;
+            if (task.completed) {
+                taskElement.style.textDecoration = 'line-through'; // יוסיף קו על המשימה אם היא מבוצעת
             }
-        }
+            dayElement.appendChild(taskElement);
+        });
+
+        calendar.appendChild(dayElement);
+    }
+}
 
         function changeMonth(offset) {
             currentMonth += offset;
