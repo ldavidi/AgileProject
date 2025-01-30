@@ -157,6 +157,33 @@
                 alert('Failed to load tasks. Please check the server connection.');
             }
         }
+function showTodayTasks() {
+    const today = dayjs().format('YYYY-MM-DD'); // Get today's date in the correct format
+
+    // Debugging: Print today's date and all task dates
+    console.log("Today's date:", today);
+    console.log("All task dates:", tasks.map(task => task.date));
+
+    // Ensure all task dates are correctly formatted before comparing
+    const todayTasks = tasks.filter(task => dayjs(task.date).format('YYYY-MM-DD') === today);
+
+    // Debugging: Check if tasks for today exist
+    console.log("Tasks for today:", todayTasks);
+
+    // Prepare the task list for today
+    let tasksForToday = "משימות להיום:\n";
+    if (todayTasks.length === 0) {
+        tasksForToday += "אין משימות להיום";
+    } else {
+        todayTasks.forEach(task => {
+            tasksForToday += `${task.name} - ${task.executor} - ${task.time || 'No Time'}\n`;
+        });
+    }
+
+    // Display the tasks in an alert box
+    alert(tasksForToday);
+}
+
 
 
 async function addTask(event) {
@@ -351,9 +378,10 @@ function renderCalendar() {
         }
 
         document.addEventListener('DOMContentLoaded', () => {
-            fetchTasks();
-
+            fetchTasks().then(() => {
+                showTodayTasks();
         });
+    });
     </script>
 </body>
 </html>
