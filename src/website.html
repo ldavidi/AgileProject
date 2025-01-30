@@ -98,6 +98,16 @@
                 <input type="text" id="taskExecutor" placeholder="מבצע המשימה" required class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
                 <input type="date" id="taskDate" required class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" pattern="\\d{4}-\\d{2}-\\d{2}">
                 <input type="time" id="taskTime" required class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <div class="flex space-x-4">
+                    <label for="recurrence">חזרה:</label>
+                    <select id="recurrence" class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="none">ללא</option>
+                        <option value="daily">יומי</option>
+                        <option value="weekly">שבועי</option>
+                        <option value="monthly">חודשי</option>
+                    </select>
+                </div>
+                <input type="number" id="recurrenceCount" placeholder="מספר חזרות" class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
                 <input type="color" id="taskColor" value="#0078d7" required class="w-full px-3 py-2">
                 <button type="submit" class="button">הוסף משימה</button>
             </form>
@@ -147,59 +157,77 @@
                 alert('Failed to load tasks. Please check the server connection.');
             }
         }
-        
 
-        async function addTask(event) {
+
+async function addTask(event) {
             event.preventDefault();
             const name = document.getElementById('taskName').value;
             const executor = document.getElementById('taskExecutor').value;
             const date = document.getElementById('taskDate').value;
             const time = document.getElementById('taskTime').value;
             const color = document.getElementById('taskColor').value;
+            const recurrence = document.getElementById('recurrence').value;
+            const recurrenceCount = parseInt(document.getElementById('recurrenceCount').value, 10);
 
             const errorMessage = document.getElementById('errorMessage');
             errorMessage.textContent = '';
 
-            console.log(`Adding task: Name=${name}, Executor=${executor}, Date=${date}, Time=${time}, Color=${color}`);
+            console.log(`Adding task: Name=${name}, Executor=${executor}, Date=${date}, Time=${time}, Color=${color}, Recurrence=${recurrence}, RecurrenceCount=${recurrenceCount}`);
 
             if (!name || !executor || !date || !time || !color) {
                 errorMessage.textContent = 'All fields are required.';
                 return;
             }
 
-            const task = {
-                name,
-                executor,
-                date,
-                time,
-                color,
-                completed: false
-            };
+            const tasksToAdd = [];
+            let currentDate = dayjs(date);
+
+            for (let i = 0; i < (recurrenceCount || 1); i++) {
+                tasksToAdd.push({
+                    name,
+                    executor,
+                    date: currentDate.format('YYYY-MM-DD'),
+                    time,
+                    color,
+                    completed: false
+                });
+
+                if (recurrence === 'daily') {
+                    currentDate = currentDate.add(1, 'day');
+                } else if (recurrence === 'weekly') {
+                    currentDate = currentDate.add(1, 'week');
+                } else if (recurrence === 'monthly') {
+                    currentDate = currentDate.add(1, 'month');
+                }
+            }
 
             try {
-                let response;
-                if (editIndex === -1) {
-                    response = await fetch('http://localhost:3000/tasks', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(task)
-                    });
-                } else {
-                    response = await fetch(`http://localhost:3000/tasks/${tasks[editIndex].id}`, {
-                        method: 'PUT',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(task)
-                    });
-                    editIndex = -1;
+                for (const task of tasksToAdd) {
+                    let response;
+                    if (editIndex === -1) {
+                        response = await fetch('http://localhost:3000/tasks', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(task)
+                        });
+                    } else {
+                        response = await fetch(`http://localhost:3000/tasks/${tasks[editIndex].id}`, {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(task)
+                        });
+                        editIndex = -1;
+                    }
+
+                    if (!response.ok) {
+                        throw new Error('Failed to save task');
+                    }
+
+                    const result = await response.json();
+                    task.id = result.id;
+                    tasks.push(task);
                 }
 
-                if (!response.ok) {
-                    throw new Error('Failed to save task');
-                }
-
-                const result = await response.json();
-                task.id = result.id;
-                tasks.push(task);
                 renderTaskList();
                 renderCalendar();
                 document.querySelector('.task-form').reset();
@@ -324,6 +352,7 @@ function renderCalendar() {
 
         document.addEventListener('DOMContentLoaded', () => {
             fetchTasks();
+
         });
     </script>
 </body>
